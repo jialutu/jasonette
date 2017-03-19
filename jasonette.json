@@ -1,75 +1,185 @@
 {
   "$jason": {
     "head": {
-      "title": "image sample"
-      },
+      "title": "Weather",
+      "offline": "true",
       "actions": {
         "$load": {
           "type": "$set",
           "options": {
-            "selected": ""
+            "mode": "c"
           },
           "success": {
-            "type": "$render"
+            "trigger": "draw"
           }
         },
-        "$pull": {
-          "type": "$media.camera",
-          "options": {
-            "quality": "0.4"
-          }
+        "$foreground": [
+          {
+            "{{#if 'mode' in $get}}": {
+              "trigger": "draw"
             }
           },
+          {
+            "{{#else}}": {
+              "type": "$set",
+              "options": {
+                "mode": "c"
+              },
+              "success": {
+                "trigger": "draw"
+              }
+            }
+          }
+        ],
+        "camera": {
+          "type": "$snapshot",
+          "success": {
+            "type": "$util.share",
+            "options": {
+              "items": [
+                {
+                  "type": "image",
+                  "data": "{{$jason.data}}"
+                }
+              ]
+            },
+            "success": {
+              "type": "$render"
+            }
+          }
+        },
+        "toggle": {
+          "type": "$set",
+          "options": {
+            "mode": [
+              {
+                "{{#if $get.mode == 'c'}}": "f"
+              },
+              {
+                "{{#else}}": "c"
+              }
+            ]
+          },
+          "success": {
+            "trigger": "draw"
+          }
+        },
+        "draw": {
+          "type": "$geo.get",
+          "success": {
+            "type": "$network.request",
+            "options": {
+              "url": "http://api.openweathermap.org/data/2.5/weather?lat={{$jason.coord.split(',')[0]}}&lon={{$jason.coord.split(',')[1]}}&APPID=8ecb164bf68983a3169aaf3b9cf9feb2"
+            },
+            "success": {
+              "type": "$set",
+              "options": {
+                "temperature": "{{Math.floor(($jason.main.temp * 9/5 - 459.67)).toString()}}",
+                "celsius": "{{(Math.floor($jason.main.temp-273.15)).toString()}}",
+                "weather": "{{$jason.weather[0].description}}",
+                "icon": "http://openweathermap.org/img/w/{{$jason.weather[0].icon}}.png"
+              },
+              "success": {
+                "type": "$render"
+              }
+            }
+          }
+        }
+      },
       "templates": {
         "body": {
           "style": {
+            "background": {
+              "type": "camera",
+              "options": {
+                "device": "back"
+              }
+            },
+            "color": "#ffffff",
             "border": "none"
           },
           "header": {
+            "title": " ",
             "menu": {
-              "text": "View Full Source",
+              "text": "View JSON",
               "href": {
-                "url": "https://github.com/Jasonette/s3-upload-example/blob/master/app.js",
+                "url": "http://www.jasonbase.com/things/1wn/edit",
                 "view": "web"
               }
+            },
+            "style": {
+              "background": "rgba(0,0,0,0)",
+              "color": "rgba(255,255,255,0.3)"
             }
           },
+          "layers": [
+            {
+              "type": "image",
+              "url": "https://s3.amazonaws.com/www.textcast.co/icons/camera%402x.png",
+              "action": {
+                "trigger": "camera"
+              },
+              "style": {
+                "bottom": "100",
+                "width": "30",
+                "move": "true",
+                "size": "20",
+                "color": "#ffffff",
+                "right": "30"
+              }
+            }
+          ],
           "sections": [
             {
-              "style": {
-                "spacing": "0",
-                "padding": "0"
-              },
-              "header": {
-                "type": "vertical",
-                "style": {
-                  "align": "center",
-                  "padding": "20",
-                  "z_index": "-1"
-                },
-                "components": [{
-                  "type": "image",
-                  "url": "https://d30y9cdsu7xlg0.cloudfront.net/png/126349-200.png",
-                  "style": {
-                    "z_index": "-1",
-                    "width": "100"
-                  }
-                }]
-              },
               "items": [
                 {
-                  "{{#if db && db.length > 0}}": {
-                    "{{#each db}}": {
-                      "type": "image",
+                  "type": "horizontal",
+                  "style": {
+                    "padding_top": "50",
+                    "background": "rgba(0,0,0,0)"
+                  },
+                  "action": {
+                    "trigger": "toggle"
+                  },
+                  "components": [
+                    {
+                      "type": "label",
+                      "text": [
+                        {
+                          "{{#if $get.mode=='f'}}": " {{$get.temperature}}°F"
+                        },
+                        {
+                          "{{#else}}": " {{$get.celsius}}°C"
+                        }
+                      ],
                       "style": {
-                        "width": "100%",
-                        "padding": "0"
-                      },
-                      "url": "{{url}}"
+                        "font": "HelveticaNeue-UltraLight",
+                        "color": "#ffffff",
+                        "size": "70",
+                        "align": "center"
+                      }
                     }
-                  }
-                }, {
-                  "{{#else}}": []
+                  ]
+                },
+                {
+                  "type": "vertical",
+                  "style": {
+                    "padding_bottom": "20",
+                    "spacing": "10",
+                    "background": "rgba(0,0,0,0)"
+                  },
+                  "components": [
+                    {
+                      "type": "label",
+                      "text": "{{$get.weather}}",
+                      "style": {
+                        "font": "HelveticaNeue-Light",
+                        "color": "#ffffff",
+                        "size": "20",
+                        "align": "center"
+                      }
+                    }
+                  ]
                 }
               ]
             }
